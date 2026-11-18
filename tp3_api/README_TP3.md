@@ -23,6 +23,8 @@ tp3_api/
 ├── requirements.txt
 ├── test_api_tp3.sh         # tests cURL
 ├── Bibliotheque_API_TP3.postman_collection.json
+├── captures_swagger_tp3.pdf   # captures Swagger des principales routes + inspection SQLite
+├── SQLITE_PARTIE1.md       # partie 1 : manipulations SQLite (initiation.db) et mini-défi
 └── bibliotheque.db         # créée automatiquement au lancement (NON versionnée)
 ```
 
@@ -100,6 +102,14 @@ Importer `Bibliotheque_API_TP3.postman_collection.json`, renseigner la variable 
 Requêtes : POST /users, POST /login (correct et mauvais mot de passe), GET /profile (avec JWT, sans jeton, JWT modifié), GET /books, POST /books (sans jeton, connecté, invalide), PUT /books/{id}, DELETE /books/{id} (lecteur → 403, administrateur → 200), GET /users, cas 404.
 
 ---
+
+## Livrables
+
+- Code : `main.py`, `database.py`, `models.py`, `schemas.py`, `security.py` ; `requirements.txt` ; `.env.example` ; `.gitignore`.
+- Base : `bibliotheque.db` n'est pas versionnée ; elle est **recréée automatiquement** au lancement (`Base.metadata.create_all`) avec le livre d'exemple et le compte administrateur.
+- [`captures_swagger_tp3.pdf`](captures_swagger_tp3.pdf) : 19 requêtes exécutées dans Swagger (succès et échecs, test de persistance après redémarrage) et inspection de `bibliotheque.db`.
+- `Bibliotheque_API_TP3.postman_collection.json`, `test_api_tp3.sh`.
+- [`SQLITE_PARTIE1.md`](SQLITE_PARTIE1.md) : partie 1 (initiation SQLite et mini-défi).
 
 ## Réponses aux questions
 
