@@ -2,7 +2,7 @@
   "info": {
     "name": "Bibliothèque API - TP3",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-    "description": "TP3 - SQLite + JWT. Renseigner admin_password (valeur de ADMIN_PASSWORD dans .env) puis Run collection dans l'ordre."
+    "description": "TP3 - SQLite + SQLAlchemy + JWT. Renseigner la variable admin_password (valeur de ADMIN_PASSWORD dans .env), puis Run collection dans l'ordre."
   },
   "item": [
     {
@@ -167,7 +167,8 @@
           "script": {
             "type": "text/javascript",
             "exec": [
-              "pm.test(\"Statut HTTP 200\", () => pm.response.to.have.status(200));"
+              "pm.test(\"Statut HTTP 200\", () => pm.response.to.have.status(200));",
+              "pm.test(\"password_hash absent de /profile\", () => pm.expect(pm.response.text()).to.not.include(\"password\"));"
             ]
           }
         }
@@ -324,6 +325,53 @@
             "exec": [
               "pm.test(\"Statut HTTP 201\", () => pm.response.to.have.status(201));",
               "pm.collectionVariables.set(\"book_id\", pm.response.json().id);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "PUT /books/{id} - modification",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"titre\": \"1984\",\n  \"auteur\": \"George Orwell\",\n  \"annee\": 1949,\n  \"categorie\": \"roman\",\n  \"disponible\": false\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/books/{{book_id}}",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "books",
+            "{{book_id}}"
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Statut HTTP 200\", () => pm.response.to.have.status(200));",
+              "pm.test(\"Modification enregistrée\", () => pm.expect(pm.response.json().disponible).to.eql(false));"
             ]
           }
         }

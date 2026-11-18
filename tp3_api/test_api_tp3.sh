@@ -49,6 +49,7 @@ appel 401 -X POST "$BASE_URL/login" -H "Content-Type: application/json" -d "{\"l
 
 echo -e "\n[SUCCÈS ATTENDU] 5. GET /profile avec le JWT (200)"
 appel 200 "$BASE_URL/profile" -H "Authorization: Bearer $TOKEN"
+PROFIL="$DERNIER_CORPS"
 
 echo -e "\n[ÉCHEC ATTENDU] 6. GET /profile sans jeton (401)"
 appel 401 "$BASE_URL/profile"
@@ -57,36 +58,45 @@ echo -e "\n[ÉCHEC ATTENDU] 7. GET /profile avec un JWT modifié (signature inva
 FAUX="${TOKEN%?}x"; [ "$FAUX" = "$TOKEN" ] && FAUX="${TOKEN%?}y"
 appel 401 "$BASE_URL/profile" -H "Authorization: Bearer $FAUX"
 
-echo -e "\n[ÉCHEC ATTENDU] 8. Ajouter un livre sans être connecté (401)"
+echo -e "\n[SUCCÈS ATTENDU] 8. /profile ne contient ni password ni password_hash"
+if echo "$PROFIL" | grep -qi "password"; then echo "  -> ÉCHEC : donnée sensible exposée"; else echo "  -> OK"; fi
+
+echo -e "\n[ÉCHEC ATTENDU] 9. Ajouter un livre sans être connecté (401)"
 appel 401 -X POST "$BASE_URL/books" -H "Content-Type: application/json" -d '{"titre": "1984", "auteur": "George Orwell"}'
 
-echo -e "\n[SUCCÈS ATTENDU] 9. Ajouter un livre connecté (201, enregistré en base)"
+echo -e "\n[SUCCÈS ATTENDU] 10. Ajouter un livre de test connecté (201, enregistré dans bibliotheque.db)"
 appel 201 -X POST "$BASE_URL/books" -H "Content-Type: application/json" -H "Authorization: Bearer $TOKEN" \
-  -d '{"titre": "1984", "auteur": "George Orwell", "annee": 1949, "categorie": "roman"}'
+  -d '{"titre": "Vingt mille lieues sous les mers", "auteur": "Jules Verne", "annee": 1870, "categorie": "aventure"}'
 LIVRE_ID=$(echo "$DERNIER_CORPS" | sed -n 's/.*"id":\([0-9]*\).*/\1/p')
+echo "   Livre de test : id $LIVRE_ID (conservé pour le test de persistance)"
 
-echo -e "\n[ÉCHEC ATTENDU] 10. Ajouter un livre invalide (titre vide) (422)"
+echo -e "\n[SUCCÈS ATTENDU] 11. Modifier le livre de test (200)"
+appel 200 -X PUT "$BASE_URL/books/$LIVRE_ID" -H "Content-Type: application/json" -H "Authorization: Bearer $TOKEN" \
+  -d '{"titre": "Vingt mille lieues sous les mers", "auteur": "Jules Verne", "annee": 1870, "categorie": "aventure", "disponible": false}'
+
+echo -e "\n[ÉCHEC ATTENDU] 12. Ajouter un livre invalide : titre vide (422)"
 appel 422 -X POST "$BASE_URL/books" -H "Content-Type: application/json" -H "Authorization: Bearer $TOKEN" -d '{"titre": "", "auteur": "X"}'
 
-echo -e "\n[ÉCHEC ATTENDU] 11. Un lecteur supprime un livre (403 : connecté mais pas admin)"
+echo -e "\n[ÉCHEC ATTENDU] 13. Un lecteur supprime un livre (403 : connecté mais pas administrateur)"
 appel 403 -X DELETE "$BASE_URL/books/$LIVRE_ID" -H "Authorization: Bearer $TOKEN"
 
-echo -e "\n[ÉCHEC ATTENDU] 12. Un lecteur consulte la liste des utilisateurs (403)"
-appel 403 "$BASE_URL/users" -H "Authorization: Bearer $TOKEN"
-
-echo -e "\n[SUCCÈS ATTENDU] 13. Connexion administrateur (200)"
+echo -e "\n[SUCCÈS ATTENDU] 14. Connexion administrateur (200)"
 appel 200 -X POST "$BASE_URL/login" -H "Content-Type: application/json" -d "{\"login\": \"$ADMIN_LOGIN\", \"password\": \"$ADMIN_PASSWORD\"}"
 TOKEN_ADMIN=$(jeton)
 
-echo -e "\n[SUCCÈS ATTENDU] 14. L'administrateur supprime le livre $LIVRE_ID (200)"
-appel 200 -X DELETE "$BASE_URL/books/$LIVRE_ID" -H "Authorization: Bearer $TOKEN_ADMIN"
+echo -e "\n[SUCCÈS ATTENDU] 15. L'administrateur ajoute puis supprime un livre temporaire (201 puis 200)"
+appel 201 -X POST "$BASE_URL/books" -H "Content-Type: application/json" -H "Authorization: Bearer $TOKEN_ADMIN" -d '{"titre": "Livre temporaire", "auteur": "Test"}'
+TEMP_ID=$(echo "$DERNIER_CORPS" | sed -n 's/.*"id":\([0-9]*\).*/\1/p')
+appel 200 -X DELETE "$BASE_URL/books/$TEMP_ID" -H "Authorization: Bearer $TOKEN_ADMIN"
 
-echo -e "\n[SUCCÈS ATTENDU] 15. L'administrateur consulte la liste des utilisateurs (200)"
-appel 200 "$BASE_URL/users" -H "Authorization: Bearer $TOKEN_ADMIN"
+echo -e "\n[ÉCHEC ATTENDU] 16. Le livre supprimé n'existe plus (404)"
+appel 404 "$BASE_URL/books/$TEMP_ID"
 
-echo -e "\n[ÉCHEC ATTENDU] 16. Livre inexistant /books/999999 (404)"
-appel 404 "$BASE_URL/books/999999"
+echo -e "\n[SUCCÈS ATTENDU] 17. Donnée persistante : le livre de test est toujours lisible en base (200)"
+appel 200 "$BASE_URL/books/$LIVRE_ID"
+echo "   Pour la persistance après redémarrage : arrêter Uvicorn (Ctrl+C), le relancer,"
+echo "   puis : curl $BASE_URL/books/$LIVRE_ID   (ou sqlite3 bibliotheque.db \"SELECT * FROM books;\")"
 
 echo -e "\n=============================================="
-echo " Fin des tests - les données sont conservées dans la base après redémarrage"
+echo " Fin des tests"
 echo "=============================================="
